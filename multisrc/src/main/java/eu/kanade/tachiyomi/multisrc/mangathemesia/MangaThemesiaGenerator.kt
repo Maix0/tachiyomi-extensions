@@ -119,10 +119,9 @@ class MangaThemesiaGenerator : ThemeSourceGenerator {
         SingleLang("World Romance Translation", "https://wrt.my.id", "id", overrideVersionCode = 10),
         SingleLang("xCaliBR Scans", "https://xcalibrscans.com", "en", overrideVersionCode = 4),
         SingleLang("Zahard", "https://zahard.org", "en", className = "Zahard", pkgName = "zahard"),
-        )
-        
-        companion object {
-            @JvmStatic
+    )
+    companion object {
+        @JvmStatic
         fun main(args: Array<String>) {
             MangaThemesiaGenerator().createAll()
         }
