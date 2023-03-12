@@ -30,6 +30,7 @@ class MangaThemesiaGenerator : ThemeSourceGenerator {
         SingleLang("Diskus Scan", "https://diskusscan.com", "pt-BR", overrideVersionCode = 7),
         SingleLang("Dojing.net", "https://dojing.net", "id", isNsfw = true, className = "DojingNet"),
         SingleLang("DuniaKomik.id", "https://duniakomik.id", "id", className = "DuniaKomikId"),
+        SingleLang("Enryu Manga", "https://enryumanga.com", "en", className = "EnryuManga", pkgName = "enryumanga"),
         SingleLang("FlameScans.fr", "https://flamescans.fr", "fr", className = "FlameScansFR"),
         SingleLang("Franxx Mangás", "https://franxxmangas.net", "pt-BR", className = "FranxxMangas", isNsfw = true),
         SingleLang("Gecenin Lordu", "https://geceninlordu.com", "tr", overrideVersionCode = 1),
@@ -117,10 +118,11 @@ class MangaThemesiaGenerator : ThemeSourceGenerator {
         SingleLang("West Manga", "https://westmanga.info", "id", overrideVersionCode = 1),
         SingleLang("World Romance Translation", "https://wrt.my.id", "id", overrideVersionCode = 10),
         SingleLang("xCaliBR Scans", "https://xcalibrscans.com", "en", overrideVersionCode = 4),
-    )
-
-    companion object {
-        @JvmStatic
+        SingleLang("Zahard", "https://zahard.org", "en", className = "Zahard", pkgName = "zahard"),
+        )
+        
+        companion object {
+            @JvmStatic
         fun main(args: Array<String>) {
             MangaThemesiaGenerator().createAll()
         }

@@ -50,6 +50,7 @@ abstract class MangaThemesia(
     override val lang: String,
     val mangaUrlDirectory: String = "/manga",
     val dateFormat: SimpleDateFormat = SimpleDateFormat("MMMM dd, yyyy", Locale.US),
+    val searchQueryName: String = "title",
 ) : ParsedHttpSource(), ConfigurableSource {
 
     private val preferences: SharedPreferences by lazy {
@@ -77,6 +78,8 @@ abstract class MangaThemesia(
         override fun intercept(chain: Interceptor.Chain): Response {
             val useRandomUa = preferences.getBoolean(PREF_KEY_RANDOM_UA, false)
             val customUa = preferences.getString(PREF_KEY_CUSTOM_UA, "")
+
+            Log.d("AAAAA", "${chain.request().url}")
 
             try {
                 if (hasUaIntercept && (useRandomUa || customUa!!.isNotBlank())) {
@@ -171,26 +174,41 @@ abstract class MangaThemesia(
     override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request {
         val url = baseUrl.toHttpUrl().newBuilder()
             .addPathSegment(mangaUrlDirectory.substring(1))
-            .addQueryParameter("title", query)
+            .addQueryParameter(searchQueryName, query)
             .addQueryParameter("page", page.toString())
 
         filters.forEach { filter ->
             when (filter) {
                 is AuthorFilter -> {
-                    url.addQueryParameter("author", filter.state)
+                    if (!filter.state.isBlank()) {
+                        url.addQueryParameter("author", filter.state)
+                    }
                 }
+
                 is YearFilter -> {
-                    url.addQueryParameter("yearx", filter.state)
+                    if (!filter.state.isBlank()) {
+                        url.addQueryParameter("yearx", filter.state)
+                    }
                 }
+
                 is StatusFilter -> {
-                    url.addQueryParameter("status", filter.selectedValue())
+                    if (!filter.selectedValue().isBlank()) {
+                        url.addQueryParameter("status", filter.selectedValue())
+                    }
                 }
+
                 is TypeFilter -> {
-                    url.addQueryParameter("type", filter.selectedValue())
+                    if (!filter.selectedValue().isBlank()) {
+                        url.addQueryParameter("type", filter.selectedValue())
+                    }
                 }
+
                 is OrderByFilter -> {
-                    url.addQueryParameter("order", filter.selectedValue())
+                    if (!filter.selectedValue().isBlank()) {
+                        url.addQueryParameter("order", filter.selectedValue())
+                    }
                 }
+
                 is GenreListFilter -> {
                     filter.state
                         .filter { it.state != Filter.TriState.STATE_IGNORE }
@@ -205,7 +223,9 @@ abstract class MangaThemesia(
                         url.setPathSegment(0, projectPageString.substring(1))
                     }
                 }
-                else -> { /* Do Nothing */ }
+
+                else -> { /* Do Nothing */
+                }
             }
         }
         url.addPathSegment("")
@@ -338,7 +358,9 @@ abstract class MangaThemesia(
         countViews(document)
 
         // Some sites also loads pages via javascript
-        if (htmlPages.isNotEmpty()) { return htmlPages }
+        if (htmlPages.isNotEmpty()) {
+            return htmlPages
+        }
 
         val docString = document.toString()
         val imageListJson = JSON_IMAGE_LIST_REGEX.find(docString)?.destructured?.toList()?.get(0).orEmpty()
