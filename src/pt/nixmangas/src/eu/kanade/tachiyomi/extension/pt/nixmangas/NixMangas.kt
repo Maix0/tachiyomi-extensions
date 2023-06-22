@@ -67,32 +67,22 @@ class NixMangas : HttpSource() {
     override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request {
         // The search with query isn't working in their direct API for some reason,
         // so we use their site wrapped API instead for now.
-        val apiUrl = "$baseUrl/obras".toHttpUrl().newBuilder()
+        val apiUrl = "$API_URL/mangas".toHttpUrl().newBuilder()
             .addQueryParameter("page", page.toString())
-            .addQueryParameter("q", query)
-            .addQueryParameter("_data", "routes/__app/obras/index")
-            .toString()
+            .addQueryParameter("search", query)
+            .build()
 
         return GET(apiUrl, apiHeaders)
     }
 
-    override fun searchMangaParse(response: Response): MangasPage {
-        val result = response.parseAs<NixMangasSearchDto>()
-        val workList = result.mangas.data.map(NixMangasWorkDto::toSManga)
-
-        return MangasPage(workList, result.mangas.hasNextPage)
-    }
+    override fun searchMangaParse(response: Response): MangasPage = latestUpdatesParse(response)
 
     override fun getMangaUrl(manga: SManga): String = baseUrl + manga.url
 
     override fun mangaDetailsRequest(manga: SManga): Request {
-        // Their API doesn't have an endpoint for the manga details, so we
-        // use their site wrapped API instead for now.
-        val apiUrl = (baseUrl + manga.url).toHttpUrl().newBuilder()
-            .addQueryParameter("_data", "routes/__app/obras/\$slug")
-            .toString()
+        val slug = manga.url.substringAfter("/obras/")
 
-        return GET(apiUrl, apiHeaders)
+        return GET("$API_URL/mangas/$slug/details", apiHeaders)
     }
 
     override fun mangaDetailsParse(response: Response): SManga {
@@ -101,13 +91,30 @@ class NixMangas : HttpSource() {
         return result.manga.toSManga()
     }
 
-    override fun chapterListRequest(manga: SManga): Request = mangaDetailsRequest(manga)
+    override fun chapterListRequest(manga: SManga): Request {
+        val slug = manga.url.substringAfter("/obras/")
+
+        return chapterListPaginatedRequest(slug)
+    }
+
+    private fun chapterListPaginatedRequest(slug: String, page: Int = 1): Request {
+        return GET("$API_URL/mangas/$slug/chapters?page=$page", apiHeaders)
+    }
 
     override fun chapterListParse(response: Response): List<SChapter> {
-        val result = response.parseAs<NixMangasDetailsDto>()
+        var result = response.parseAs<NixMangasPaginatedContent<NixMangasChapterDto>>()
         val currentTimeStamp = System.currentTimeMillis()
+        val chapters = result.data.toMutableList()
+        val slug = response.request.url.pathSegments[2]
 
-        return result.manga.chapters
+        while (result.currentPage < result.lastPage) {
+            val nextRequest = chapterListPaginatedRequest(slug, result.currentPage + 1)
+            result = client.newCall(nextRequest).execute().parseAs()
+
+            chapters += result.data
+        }
+
+        return chapters
             .filter { it.isPublished }
             .map(NixMangasChapterDto::toSChapter)
             .filter { it.date_upload <= currentTimeStamp }
@@ -117,11 +124,9 @@ class NixMangas : HttpSource() {
     override fun getChapterUrl(chapter: SChapter): String = baseUrl + chapter.url
 
     override fun pageListRequest(chapter: SChapter): Request {
-        val apiUrl = (baseUrl + chapter.url).toHttpUrl().newBuilder()
-            .addQueryParameter("_data", "routes/__leitor/ler.\$manga.\$chapter")
-            .toString()
+        val id = chapter.url.substringAfter("/ler/")
 
-        return GET(apiUrl, apiHeaders)
+        return GET("$API_URL/chapters/$id")
     }
 
     override fun pageListParse(response: Response): List<Page> {

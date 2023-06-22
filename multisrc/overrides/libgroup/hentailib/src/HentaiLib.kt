@@ -1,30 +1,27 @@
 package eu.kanade.tachiyomi.extension.ru.hentailib
 
+import android.app.Application
+import android.content.SharedPreferences
+import android.widget.Toast
+import androidx.preference.EditTextPreference
 import eu.kanade.tachiyomi.multisrc.libgroup.LibGroup
 import eu.kanade.tachiyomi.network.POST
 import eu.kanade.tachiyomi.source.model.Filter
 import eu.kanade.tachiyomi.source.model.FilterList
-import okhttp3.Headers
-import okhttp3.OkHttpClient
 import okhttp3.Request
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 
-class HentaiLib : LibGroup("HentaiLib", "https://hentailib.me", "ru") {
+class HentaiLib : LibGroup("HentaiLib", "https://v1.hentailib.org", "ru") {
 
     override val id: Long = 6425650164840473547
 
-    override val client: OkHttpClient = super.client.newBuilder()
-        .addInterceptor(::imageContentTypeIntercept)
-        .build()
+    private val preferences: SharedPreferences by lazy {
+        Injekt.get<Application>().getSharedPreferences("source_$id", 0x0000)
+    }
 
-    private var csrfToken: String = ""
-
-    private fun catalogHeaders() = Headers.Builder()
-        .apply {
-            add("Accept", "application/json, text/plain, */*")
-            add("X-Requested-With", "XMLHttpRequest")
-            add("x-csrf-token", csrfToken)
-        }
-        .build()
+    private var domain: String = preferences.getString(DOMAIN_TITLE, DOMAIN_DEFAULT)!!
+    override val baseUrl: String = domain
 
     override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request {
         if (csrfToken.isEmpty()) {
@@ -229,7 +226,31 @@ class HentaiLib : LibGroup("HentaiLib", "https://hentailib.me", "ru") {
         SearchFilter("Яндэрэ", "146"),
     )
 
+    override fun setupPreferenceScreen(screen: androidx.preference.PreferenceScreen) {
+        super.setupPreferenceScreen(screen)
+        EditTextPreference(screen.context).apply {
+            key = DOMAIN_TITLE
+            this.title = DOMAIN_TITLE
+            summary = domain
+            this.setDefaultValue(DOMAIN_DEFAULT)
+            dialogTitle = DOMAIN_TITLE
+            setOnPreferenceChangeListener { _, newValue ->
+                try {
+                    val res = preferences.edit().putString(DOMAIN_TITLE, newValue as String).commit()
+                    Toast.makeText(screen.context, "Для смены домена необходимо перезапустить приложение с полной остановкой.", Toast.LENGTH_LONG).show()
+                    res
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    false
+                }
+            }
+        }.let(screen::addPreference)
+    }
+
     companion object {
         const val PREFIX_SLUG_SEARCH = "slug:"
+
+        private const val DOMAIN_TITLE = "Домен"
+        private const val DOMAIN_DEFAULT = "https://v1.hentailib.org"
     }
 }
